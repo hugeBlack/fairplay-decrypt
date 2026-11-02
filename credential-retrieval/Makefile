@@ -2,7 +2,12 @@
 
 BUILD_DIR := build
 BUNDLE_DIR := $(BUILD_DIR)/bundle
-COMMON_FLAGS := -arch arm64 -miphoneos-version-min=10.0 -O2 -Wall -Wextra -Werror
+IOS_CC ?= xcrun --sdk iphoneos clang
+IOS_TARGET_FLAGS ?= -arch arm64 -miphoneos-version-min=10.0
+IOS_CPPFLAGS ?=
+IOS_LDFLAGS ?=
+LDID ?= ldid
+COMMON_FLAGS := $(IOS_TARGET_FLAGS) $(IOS_CPPFLAGS) -O2 -Wall -Wextra -Werror
 DEVICE_PROGRAMS := credential.ios driver.ios trigger.ios
 DEVICE_DATA := static-key-table.bin core4-word-table.bin
 
@@ -16,16 +21,16 @@ $(BUILD_DIR) $(BUNDLE_DIR):
 	mkdir -p "$@"
 
 $(BUILD_DIR)/credential.ios: Makefile credential/credential.c credential/observer.c credential/observer.h credential/finalizer.c credential/finalizer.h credential/selector_native.c credential/selector_native.h credential/core4_native.c credential/core4_native.h credential/core4_digest.c credential/core4_digest.h credential/core4_aes.c credential/core4_aes.h credential/core4_finish.c credential/core4_finish.h credential/core4_contexts.c credential/core4_contexts.h credential/core4_tables.inc credential/credential.entitlements.plist | $(BUILD_DIR)
-	xcrun --sdk iphoneos clang $(COMMON_FLAGS) -std=c11 -fwrapv -fno-strict-aliasing -Wno-bitwise-op-parentheses -Wno-shift-op-parentheses credential/credential.c credential/observer.c credential/finalizer.c credential/selector_native.c credential/core4_native.c credential/core4_digest.c credential/core4_aes.c credential/core4_finish.c credential/core4_contexts.c -framework CoreFoundation -framework IOKit -o "$@"
-	ldid -Scredential/credential.entitlements.plist "$@"
+	$(IOS_CC) $(COMMON_FLAGS) -std=c11 -fwrapv -fno-strict-aliasing -Wno-bitwise-op-parentheses -Wno-shift-op-parentheses credential/credential.c credential/observer.c credential/finalizer.c credential/selector_native.c credential/core4_native.c credential/core4_digest.c credential/core4_aes.c credential/core4_finish.c credential/core4_contexts.c $(IOS_LDFLAGS) -framework CoreFoundation -framework IOKit -o "$@"
+	$(LDID) -Scredential/credential.entitlements.plist "$@"
 
 $(BUILD_DIR)/driver.ios: Makefile driver/driver.c driver/driver.entitlements.plist | $(BUILD_DIR)
-	xcrun --sdk iphoneos clang $(COMMON_FLAGS) driver/driver.c -framework IOKit -o "$@"
-	ldid -Sdriver/driver.entitlements.plist "$@"
+	$(IOS_CC) $(COMMON_FLAGS) driver/driver.c $(IOS_LDFLAGS) -framework IOKit -o "$@"
+	$(LDID) -Sdriver/driver.entitlements.plist "$@"
 
 $(BUILD_DIR)/trigger.ios: Makefile trigger/trigger.c trigger/trigger.entitlements.plist | $(BUILD_DIR)
-	xcrun --sdk iphoneos clang $(COMMON_FLAGS) -std=c11 trigger/trigger.c -o "$@"
-	ldid -Strigger/trigger.entitlements.plist "$@"
+	$(IOS_CC) $(COMMON_FLAGS) -std=c11 trigger/trigger.c $(IOS_LDFLAGS) -o "$@"
+	$(LDID) -Strigger/trigger.entitlements.plist "$@"
 
 $(BUNDLE_DIR)/%: $(BUILD_DIR)/% | $(BUNDLE_DIR)
 	cp "$<" "$@"
